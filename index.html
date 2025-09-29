@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Overwatch Team SR Calculator</title>
+    <style>
+        /* Overwatch themed colors - Because why not */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1c1c1c;
+            color: #f4f4f4;
+            background-image: url('Overwatch.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-position: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(255, 136, 0, 0.6);
+            position: relative;
+            z-index: 2;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff9f00;
+            font-size: 2em;
+        }
+
+        .author {
+            text-align: center;
+            color: #ff9f00;
+            font-size: 1.2em;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        input[type="number"], textarea {
+            width: 100%; 
+            padding: 12px;
+            border: 2px solid #ff9f00;
+            border-radius: 5px;
+            background-color: #333;
+            color: #fff;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: none;
+            height: 100px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff9f00;
+            color: #fff;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #f7b047;
+        }
+
+        .result {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.5em;
+            color: #ff9f00;
+            font-weight: bold;
+        }
+
+        /* Bar graph styles */
+        .bar-container {
+            margin-top: 20px;
+        }
+
+        .bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .bar-label {
+            width: 100px;
+            text-align: right;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .bar-graph {
+            flex: 1;
+            background-color: #333;
+            border: 1px solid #ff9f00;
+            height: 20px;
+            position: relative;
+        }
+
+        .bar-fill {
+            background-color: #ff9f00;
+            height: 100%;
+            width: 0%;
+            max-width: 100%;
+        }
+
+        .bar-value {
+            position: absolute;
+            right: 5px;
+            top: 0;
+            color: #fff;
+            font-size: 0.9em;
+        }
+
+        /* Overwatch logo as background, faded */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('Overwatch.png') center center no-repeat;
+            background-size: 500px;
+            opacity: 0.2;
+            z-index: 1;
+        }
+    </style>
+<script defer data-domain="overwatchteamsrcalculator.tiiny.site" src="https://analytics.tiiny.site/js/plausible.js"></script><script type="text/javascript" src="https://tiiny.host/ad-script.js"></script></head>
+<body>
+
+<div class="container">
+    <h1>Overwatch Team SR Calculator</h1>
+    <p class="author">by Lars</p>
+
+    <div class="form-group">
+        <label>Select Calculation Mode:</label>
+        <label>
+            <input type="radio" name="calcMode" value="overall" checked onclick="toggleMode()"> Overall Team Average
+        </label>
+        <label>
+            <input type="radio" name="calcMode" value="perRole" onclick="toggleMode()"> Per-Role Averages
+        </label>
+    </div>
+
+    <!-- Overall Team Input -->
+    <div id="overallInput">
+        <div class="form-group">
+            <label for="playerRanks">Enter Players' Ranks (comma separated):</label>
+            <textarea id="playerRanks" placeholder="E.g., Diamond 1, Gold 3, Platinum 2"></textarea>
+        </div>
+    </div>
+
+    <!-- Per-Role Input -->
+    <div id="perRoleInput" style="display: none;">
+        <div class="form-group">
+            <label for="tankRanks">Enter Tank Players' Ranks (comma separated):</label>
+            <textarea id="tankRanks" placeholder="E.g., Diamond 1, Gold 3"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="damageRanks">Enter Damage Players' Ranks (comma separated):</label>
+            <textarea id="damageRanks" placeholder="E.g., Platinum 2, Gold 1"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="supportRanks">Enter Support Players' Ranks (comma separated):</label>
+            <textarea id="supportRanks" placeholder="E.g., Silver 5, Gold 4"></textarea>
+        </div>
+    </div>
+
+    <button onclick="calculateSR()">Calculate Average SR</button>
+
+    <div class="result" id="result"></div>
+    <div class="bar-container" id="barContainer"></div>
+</div>
+
+<script>
+    // Function to toggle input modes
+    function toggleMode() {
+        const calcMode = document.querySelector('input[name="calcMode"]:checked').value;
+        if (calcMode === 'overall') {
+            document.getElementById('overallInput').style.display = 'block';
+            document.getElementById('perRoleInput').style.display = 'none';
+        } else {
+            document.getElementById('overallInput').style.display = 'none';
+            document.getElementById('perRoleInput').style.display = 'block';
+        }
+        // Clear previous results
+        document.getElementById('result').innerText = '';
+        document.getElementById('barContainer').innerHTML = '';
+    }
+
+    // Function to convert rank to SR
+    function rankToSR(rank) {
+        const rankBaseSR = {
+            "Bronze 5": [0, 1100], //Gizgams Peak rank
+            "Bronze 4": [1101, 1200],
+            "Bronze 3": [1201, 1300],
+            "Bronze 2": [1301, 1400],
+            "Bronze 1": [1401, 1500],
+            "Silver 5": [1501, 1600],
+            "Silver 4": [1601, 1700],
+            "Silver 3": [1701, 1800],
+            "Silver 2": [1801, 1900],
+            "Silver 1": [1901, 2000],
+            "Gold 5": [2001, 2100],
+            "Gold 4": [2101, 2200],
+            "Gold 3": [2201, 2300],
+            "Gold 2": [2301, 2400],
+            "Gold 1": [2401, 2500],
+            "Platinum 5": [2501, 2600],
+            "Platinum 4": [2601, 2700],
+            "Platinum 3": [2701, 2800],
+            "Platinum 2": [2801, 2900],
+            "Platinum 1": [2901, 3000],
+            "Diamond 5": [3001, 3100],
+            "Diamond 4": [3101, 3200],
+            "Diamond 3": [3201, 3300],
+            "Diamond 2": [3301, 3400],
+            "Diamond 1": [3401, 3500],
+            "Master 5": [3501, 3600],
+            "Master 4": [3601, 3700],
+            "Master 3": [3701, 3800],
+            "Master 2": [3801, 3900],
+            "Master 1": [3901, 4000],
+            "Grandmaster 5": [4001, 4100],
+            "Grandmaster 4": [4101, 4200],
+            "Grandmaster 3": [4201, 4300],
+            "Grandmaster 2": [4301, 4400],
+            "Grandmaster 1": [4401, 4500],
+            "Champion 5": [4501, 4600],
+            "Champion 4": [4601, 4700],
+            "Champion 3": [4701, 4800],
+            "Champion 2": [4801, 4900],
+            "Champion 1": [4901, 5000] // Lar's Peak Rank (real)
+        };
+
+        const rankTrimmed = rank.trim();
+
+        // Use `rankTrimmed in rankBaseSR` to explicitly check for the key
+        //Thanks Adele,  all ranks should work now?
+        if (!(rankTrimmed in rankBaseSR)) {
+            return null;
+        }
+
+        const srRange = rankBaseSR[rankTrimmed];
+        return (srRange[0] + srRange[1]) / 2; // Return the midpoint of the SR range
+    }
+
+    // Function to calculate average SR
+    function calculateSR() {
+        const calcMode = document.querySelector('input[name="calcMode"]:checked').value;
+        const resultDiv = document.getElementById('result');
+        const barContainer = document.getElementById('barContainer');
+        resultDiv.innerText = '';
+        barContainer.innerHTML = '';
+
+        if (calcMode === 'overall') {
+            const playerRanks = document.getElementById("playerRanks").value;
+
+            if (!playerRanks.trim()) {
+                resultDiv.innerText = "Please enter valid ranks.";
+                return;
+            }
+
+            const ranks = playerRanks.split(",");
+            let totalSR = 0;
+            let playerCount = ranks.length;
+
+            for (let i = 0; i < ranks.length; i++) {
+                const sr = rankToSR(ranks[i]);
+                if (sr === null) {
+                    resultDiv.innerText = `Invalid rank: ${ranks[i].trim()}`;
+                    return;
+                }
+                totalSR += sr;
+            }
+
+            const averageSR = totalSR / playerCount;
+            resultDiv.innerText = `The team's average SR is: ${averageSR.toFixed(2)}`;
+        } 
+        //Per-Role Average Calculator - might move into its own part later, but for now its else statment
+        else {
+            // Per-Role Averages
+            const roles = ['Tank', 'Damage', 'Support'];
+            const roleIds = ['tankRanks', 'damageRanks', 'supportRanks'];
+            let overallTotalSR = 0;
+            let overallPlayerCount = 0;
+            let roleAverages = {};
+
+            for (let i = 0; i < roles.length; i++) {
+                const role = roles[i];
+                const ranksInput = document.getElementById(roleIds[i]).value;
+                if (!ranksInput.trim()) {
+                    continue; // Skip if no input for this role
+                }
+
+                const ranks = ranksInput.split(",");
+                let totalSR = 0;
+                let playerCount = ranks.length;
+
+                for (let j = 0; j < ranks.length; j++) {
+                    const sr = rankToSR(ranks[j]);
+                    if (sr === null) {
+                        resultDiv.innerText = `Invalid rank in ${role}: ${ranks[j].trim()}`;
+                        return;
+                    }
+                    totalSR += sr;
+                }
+
+                const averageSR = totalSR / playerCount;
+                roleAverages[role] = averageSR;
+
+                overallTotalSR += totalSR;
+                overallPlayerCount += playerCount;
+            }
+
+            if (overallPlayerCount === 0) {
+                resultDiv.innerText = "Please enter valid ranks for at least one role.";
+                return;
+            }
+
+            const overallAverageSR = overallTotalSR / overallPlayerCount;
+            resultDiv.innerText = `The team's overall average SR is: ${overallAverageSR.toFixed(2)}`;
+
+            // Display bar graphs
+            for (const role in roleAverages) {
+                const avgSR = roleAverages[role];
+                const percentage = (avgSR / 5000) * 100; // Assuming max SR is 5000
+
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+
+                const label = document.createElement('div');
+                label.className = 'bar-label';
+                label.innerText = role;
+
+                const graph = document.createElement('div');
+                graph.className = 'bar-graph';
+
+                const fill = document.createElement('div');
+                fill.className = 'bar-fill';
+                fill.style.width = `${percentage}%`;
+
+                const value = document.createElement('div');
+                value.className = 'bar-value';
+                value.innerText = `${avgSR.toFixed(2)} SR`;
+
+                graph.appendChild(fill);
+                graph.appendChild(value);
+
+                bar.appendChild(label);
+                bar.appendChild(graph);
+
+                barContainer.appendChild(bar);
+            }
+        }
+    }
+
+</script>
+
+</body>
+</html>

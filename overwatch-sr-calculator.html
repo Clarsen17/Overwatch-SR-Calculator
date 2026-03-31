@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overwatch Team SR Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0b10;
+    color: #e8e0d4;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .hero {
+    background: linear-gradient(180deg, rgba(255,140,0,0.15) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(255,140,0,0.15);
+    padding: 40px 20px 32px;
+    text-align: center;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: rgba(255,140,0,0.1); border: 1px solid rgba(255,140,0,0.25);
+    border-radius: 999px; padding: 6px 18px; margin-bottom: 20px;
+  }
+  .hero-badge-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ff8c00; box-shadow: 0 0 8px #ff8c00; flex-shrink: 0;
+  }
+  .hero-badge-text {
+    font-size: 12px; font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 2px; color: #ff8c00; font-weight: 600; text-transform: uppercase;
+  }
+  .hero h1 {
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: clamp(28px, 5vw, 48px); color: #fff;
+    letter-spacing: -0.5px; line-height: 1.1;
+  }
+  .hero h1 span { color: #ff8c00; }
+  .hero-author { margin-top: 10px; color: #666; font-size: 14px; }
+
+  /* Main container */
+  .container { max-width: 600px; margin: 0 auto; padding: 32px 20px 60px; }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex; background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 5px; margin-bottom: 28px;
+  }
+  .mode-btn {
+    flex: 1; padding: 10px; border: none; cursor: pointer;
+    border-radius: 10px; font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 14px; letter-spacing: 0.5px;
+    text-transform: uppercase; transition: all 0.2s;
+    background: transparent; color: #666;
+  }
+  .mode-btn.active {
+    background: #ff8c00; color: #fff;
+    box-shadow: 0 4px 20px rgba(255,140,0,0.35);
+  }
+
+  /* Input cards */
+  .input-card {
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px; padding: 20px 24px;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 14px;
+  }
+  .input-card:last-child { margin-bottom: 0; }
+  .input-card-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  }
+  .input-icon {
+    border-radius: 10px; padding: 7px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .input-label {
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 15px; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .rank-textarea {
+    width: 100%; background: rgba(0,0,0,0.3);
+    border-radius: 10px; color: #e8e0d4;
+    padding: 12px 14px; font-size: 14px; resize: none;
+    font-family: 'Inter', sans-serif; line-height: 1.5;
+    outline: none; transition: border-color 0.2s;
+  }
+  .rank-textarea::placeholder { color: #444; }
+
+  /* Error */
+  .error-msg {
+    margin-top: 16px; padding: 14px 18px;
+    background: rgba(239,83,80,0.1); border: 1px solid rgba(239,83,80,0.3);
+    border-radius: 12px; color: #ef9a9a; font-size: 14px;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  /* Calculate button */
+  .calc-btn {
+    width: 100%; margin-top: 24px; padding: 16px;
+    background: linear-gradient(135deg, #ff8c00, #ff6200);
+    border: none; border-radius: 14px; cursor: pointer;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 17px; letter-spacing: 2px; text-transform: uppercase;
+    color: #fff; box-shadow: 0 8px 32px rgba(255,140,0,0.35);
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  .calc-btn:hover { box-shadow: 0 12px 40px rgba(255,140,0,0.45); }
+  .calc-btn:active { transform: scale(0.98); box-shadow: 0 4px 16px rgba(255,140,0,0.3); }
+
+  /* Results */
+  .results { margin-top: 32px; display: none; }
+  .results.visible {
+    display: block;
+    animation: fadeUp 0.4s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* Result card */
+  .result-card {
+    border-radius: 20px; padding: 32px;
+    border: 1px solid rgba(255,255,255,0.1);
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .result-card-grid {
+    position: absolute; inset: 0; opacity: 0.04;
+    pointer-events: none;
+  }
+  .result-label {
+    font-size: 12px; font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 3px; text-transform: uppercase;
+    margin-bottom: 8px; font-weight: 600; position: relative;
+  }
+  .result-sr {
+    font-size: 60px; font-weight: 800;
+    font-family: 'Rajdhani', sans-serif; line-height: 1;
+    margin-bottom: 12px; position: relative;
+  }
+  .result-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.07); border-radius: 20px;
+    padding: 4px 12px; font-size: 13px; font-weight: 600;
+    font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px;
+    position: relative;
+  }
+
+  /* Role breakdown */
+  .breakdown {
+    margin-top: 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px; padding: 24px;
+  }
+  .breakdown-title {
+    font-size: 11px; font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 2.5px; text-transform: uppercase;
+    color: #555; margin-bottom: 20px; font-weight: 600;
+  }
+  .role-bar { margin-bottom: 16px; }
+  .role-bar:last-child { margin-bottom: 0; }
+  .role-bar-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .role-bar-left { display: flex; align-items: center; gap: 10px; }
+  .role-bar-icon { width: 22px; height: 22px; flex-shrink: 0; }
+  .role-bar-name {
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: #bbb;
+  }
+  .role-bar-right { display: flex; align-items: center; gap: 10px; }
+  .role-bar-sr { font-size: 13px; color: #888; font-family: 'Inter', sans-serif; }
+  .role-bar-rank {
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 13px; letter-spacing: 0.5px;
+  }
+  .bar-track {
+    height: 8px; background: rgba(255,255,255,0.06);
+    border-radius: 8px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 8px; width: 0%;
+    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Hidden sections */
+  #perRoleInputs { display: none; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    <span class="hero-badge-text">Overwatch SR Calculator</span>
+  </div>
+  <h1>Team SR <span>Calculator</span></h1>
+  <p class="hero-author">by Lars</p>
+</div>
+
+<div class="container">
+
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnOverall" onclick="setMode('overall')">Overall Average</button>
+    <button class="mode-btn" id="btnPerRole" onclick="setMode('perRole')">Per Role</button>
+  </div>
+
+  <!-- Overall input -->
+  <div id="overallInput">
+    <div class="input-card" id="overallCard" style="border: 1px solid rgba(255,140,0,0.2);">
+      <div class="input-card-header">
+        <div class="input-icon" style="color:#ff8c00; background:rgba(255,140,0,0.13);">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <circle cx="9" cy="9" r="4" stroke="currentColor" stroke-width="2"/>
+            <circle cx="19" cy="9" r="4" stroke="currentColor" stroke-width="2"/>
+            <path d="M3 22 C3 17 6 15 9 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M25 22 C25 17 22 15 19 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M9 15 C10.5 14 13.5 14 15 15 C17 16 19 17 19 22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="input-label" style="color:#ff8c00;">All Players</span>
+      </div>
+      <textarea id="overallRanks" class="rank-textarea" rows="2"
+        style="border: 1px solid rgba(255,140,0,0.13);"
+        placeholder="Gold 1, Platinum 3, Diamond 2, Master 4..."
+        onfocus="this.style.borderColor='rgba(255,140,0,0.5)'"
+        onblur="this.style.borderColor='rgba(255,140,0,0.13)'"></textarea>
+    </div>
+  </div>
+
+  <!-- Per-role inputs -->
+  <div id="perRoleInputs">
+    <!-- Tank -->
+    <div class="input-card" style="border: 1px solid rgba(79,195,247,0.2);"
+      onmouseenter="this.style.borderColor='rgba(79,195,247,0.4)';this.style.background='rgba(255,255,255,0.05)'"
+      onmouseleave="this.style.borderColor='rgba(79,195,247,0.2)';this.style.background='rgba(255,255,255,0.03)'">
+      <div class="input-card-header">
+        <div class="input-icon" style="color:#4fc3f7; background:rgba(79,195,247,0.13);">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 3 L24 8 L24 16 C24 21 19 25 14 27 C9 25 4 21 4 16 L4 8 Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>
+            <path d="M10 14 L13 17 L18 11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="input-label" style="color:#4fc3f7;">Tank</span>
+      </div>
+      <textarea id="tankRanks" class="rank-textarea" rows="2"
+        style="border: 1px solid rgba(79,195,247,0.13);"
+        placeholder="Diamond 2, Master 5..."
+        onfocus="this.style.borderColor='rgba(79,195,247,0.5)'"
+        onblur="this.style.borderColor='rgba(79,195,247,0.13)'"></textarea>
+    </div>
+
+    <!-- Damage -->
+    <div class="input-card" style="border: 1px solid rgba(239,83,80,0.2);"
+      onmouseenter="this.style.borderColor='rgba(239,83,80,0.4)';this.style.background='rgba(255,255,255,0.05)'"
+      onmouseleave="this.style.borderColor='rgba(239,83,80,0.2)';this.style.background='rgba(255,255,255,0.03)'">
+      <div class="input-card-header">
+        <div class="input-icon" style="color:#ef5350; background:rgba(239,83,80,0.13);">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M6 22 L18 6 L22 10 L10 22 Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>
+            <circle cx="20" cy="8" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M4 24 L8 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="input-label" style="color:#ef5350;">Damage</span>
+      </div>
+      <textarea id="damageRanks" class="rank-textarea" rows="2"
+        style="border: 1px solid rgba(239,83,80,0.13);"
+        placeholder="Platinum 1, Gold 3..."
+        onfocus="this.style.borderColor='rgba(239,83,80,0.5)'"
+        onblur="this.style.borderColor='rgba(239,83,80,0.13)'"></textarea>
+    </div>
+
+    <!-- Support -->
+    <div class="input-card" style="border: 1px solid rgba(102,187,106,0.2);"
+      onmouseenter="this.style.borderColor='rgba(102,187,106,0.4)';this.style.background='rgba(255,255,255,0.05)'"
+      onmouseleave="this.style.borderColor='rgba(102,187,106,0.2)';this.style.background='rgba(255,255,255,0.03)'">
+      <div class="input-card-header">
+        <div class="input-icon" style="color:#66bb6a; background:rgba(102,187,106,0.13);">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 5 C14 5 7 9 7 16 C7 20.4 10.1 24 14 24 C17.9 24 21 20.4 21 16 C21 9 14 5 14 5Z" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M11 14.5 L17 14.5 M14 11.5 L14 17.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="input-label" style="color:#66bb6a;">Support</span>
+      </div>
+      <textarea id="supportRanks" class="rank-textarea" rows="2"
+        style="border: 1px solid rgba(102,187,106,0.13);"
+        placeholder="Master 2, Diamond 4..."
+        onfocus="this.style.borderColor='rgba(102,187,106,0.5)'"
+        onblur="this.style.borderColor='rgba(102,187,106,0.13)'"></textarea>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-msg" id="errorMsg"></div>
+
+  <!-- Button -->
+  <button class="calc-btn" onclick="calculate()">Calculate SR</button>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="result-card" id="resultCard">
+      <svg class="result-card-grid" id="resultGrid" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)"/>
+      </svg>
+      <div class="result-label" id="resultLabel">Team Average SR</div>
+      <div class="result-sr" id="resultSR">0</div>
+      <div class="result-badge" id="resultBadge">—</div>
+    </div>
+
+    <div class="breakdown" id="breakdown" style="display:none;">
+      <div class="breakdown-title">Role Breakdown</div>
+      <div id="roleBars"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const RANK_SR = {
+  "Bronze 5":[0,1100],"Bronze 4":[1101,1200],"Bronze 3":[1201,1300],
+  "Bronze 2":[1301,1400],"Bronze 1":[1401,1500],
+  "Silver 5":[1501,1600],"Silver 4":[1601,1700],"Silver 3":[1701,1800],
+  "Silver 2":[1801,1900],"Silver 1":[1901,2000],
+  "Gold 5":[2001,2100],"Gold 4":[2101,2200],"Gold 3":[2201,2300],
+  "Gold 2":[2301,2400],"Gold 1":[2401,2500],
+  "Platinum 5":[2501,2600],"Platinum 4":[2601,2700],"Platinum 3":[2701,2800],
+  "Platinum 2":[2801,2900],"Platinum 1":[2901,3000],
+  "Diamond 5":[3001,3100],"Diamond 4":[3101,3200],"Diamond 3":[3201,3300],
+  "Diamond 2":[3301,3400],"Diamond 1":[3401,3500],
+  "Master 5":[3501,3600],"Master 4":[3601,3700],"Master 3":[3701,3800],
+  "Master 2":[3801,3900],"Master 1":[3901,4000],
+  "Grandmaster 5":[4001,4100],"Grandmaster 4":[4101,4200],"Grandmaster 3":[4201,4300],
+  "Grandmaster 2":[4301,4400],"Grandmaster 1":[4401,4500],
+  "Champion 5":[4501,4600],"Champion 4":[4601,4700],"Champion 3":[4701,4800],
+  "Champion 2":[4801,4900],"Champion 1":[4901,5000]
+};
+
+const TIER_INFO = {
+  Bronze:      { color:"#CD7F32", bg:"linear-gradient(135deg,#3d2008,#1a0e04)" },
+  Silver:      { color:"#C0C0C0", bg:"linear-gradient(135deg,#2a2a2a,#111)" },
+  Gold:        { color:"#FFD700", bg:"linear-gradient(135deg,#3d2e00,#1a1200)" },
+  Platinum:    { color:"#00CED1", bg:"linear-gradient(135deg,#003d3d,#001a1a)" },
+  Diamond:     { color:"#00BFFF", bg:"linear-gradient(135deg,#00203d,#000e1a)" },
+  Master:      { color:"#9B59B6", bg:"linear-gradient(135deg,#1f0033,#0d0016)" },
+  Grandmaster: { color:"#F39C12", bg:"linear-gradient(135deg,#3d1f00,#1a0d00)" },
+  Champion:    { color:"#FF4500", bg:"linear-gradient(135deg,#3d0000,#1a0000)" },
+};
+
+const ROLE_SVG = {
+  Tank: `<svg width="22" height="22" viewBox="0 0 28 28" fill="none"><path d="M14 3 L24 8 L24 16 C24 21 19 25 14 27 C9 25 4 21 4 16 L4 8 Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/><path d="M10 14 L13 17 L18 11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  Damage: `<svg width="22" height="22" viewBox="0 0 28 28" fill="none"><path d="M6 22 L18 6 L22 10 L10 22 Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/><circle cx="20" cy="8" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M4 24 L8 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  Support: `<svg width="22" height="22" viewBox="0 0 28 28" fill="none"><path d="M14 5 C14 5 7 9 7 16 C7 20.4 10.1 24 14 24 C17.9 24 21 20.4 21 16 C21 9 14 5 14 5Z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M11 14.5 L17 14.5 M14 11.5 L14 17.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`,
+};
+
+let currentMode = 'overall';
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btnOverall').classList.toggle('active', mode === 'overall');
+  document.getElementById('btnPerRole').classList.toggle('active', mode === 'perRole');
+  document.getElementById('overallInput').style.display = mode === 'overall' ? 'block' : 'none';
+  document.getElementById('perRoleInputs').style.display = mode === 'perRole' ? 'block' : 'none';
+  hideResults();
+  clearError();
+}
+
+function rankToSR(rank) {
+  const r = rank.trim();
+  if (!(r in RANK_SR)) return null;
+  const [lo, hi] = RANK_SR[r];
+  return (lo + hi) / 2;
+}
+
+function srToRankInfo(sr) {
+  const tiers = [
+    [1101, 'Bronze'], [1501, 'Silver'], [2001, 'Gold'],
+    [2501, 'Platinum'], [3001, 'Diamond'], [3501, 'Master'],
+    [4001, 'Grandmaster'], [4501, 'Champion'], [Infinity, 'Champion']
+  ];
+  let tier = 'Bronze';
+  for (const [cap, t] of tiers) { if (sr < cap) { tier = t; break; } }
+  const caps = { Bronze:1500,Silver:2000,Gold:2500,Platinum:3000,Diamond:3500,Master:4000,Grandmaster:4500,Champion:5000 };
+  const div = Math.min(5, Math.max(1, Math.ceil((caps[tier] - sr) / 100) + 1));
+  return { tier, div, ...TIER_INFO[tier] };
+}
+
+function parseRanks(input) {
+  if (!input.trim()) return { sr: [] };
+  const parts = input.split(',');
+  const sr = [];
+  for (const p of parts) {
+    const v = rankToSR(p);
+    if (v === null) return { error: `Invalid rank: "${p.trim()}"` };
+    sr.push(v);
+  }
+  return { sr };
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function clearError() {
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+function hideResults() {
+  document.getElementById('results').classList.remove('visible');
+}
+
+let animRaf = null;
+function animateNumber(el, from, to, duration) {
+  cancelAnimationFrame(animRaf);
+  const start = performance.now();
+  function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 4);
+    el.textContent = Math.round(from + (to - from) * ease);
+    if (p < 1) animRaf = requestAnimationFrame(step);
+  }
+  animRaf = requestAnimationFrame(step);
+}
+
+function renderResultCard(sr, label) {
+  const info = srToRankInfo(sr);
+  const card = document.getElementById('resultCard');
+  card.style.background = info.bg;
+  card.style.border = `1px solid ${info.color}44`;
+  card.style.boxShadow = `0 0 40px ${info.color}22, inset 0 1px 0 rgba(255,255,255,0.07)`;
+
+  const grid = document.getElementById('resultGrid');
+  grid.querySelector('path').setAttribute('stroke', info.color);
+
+  document.getElementById('resultLabel').style.color = info.color + 'aa';
+  document.getElementById('resultLabel').textContent = label;
+
+  const srEl = document.getElementById('resultSR');
+  srEl.style.color = info.color;
+  srEl.style.textShadow = `0 0 40px ${info.color}88`;
+  animateNumber(srEl, 0, Math.round(sr), 900);
+
+  const badge = document.getElementById('resultBadge');
+  badge.style.border = `1px solid ${info.color}44`;
+  badge.style.color = info.color;
+  badge.textContent = `${info.tier} ${info.div}`;
+}
+
+function renderRoleBars(roles) {
+  const breakdown = document.getElementById('breakdown');
+  const container = document.getElementById('roleBars');
+  container.innerHTML = '';
+
+  const entries = Object.entries(roles);
+  if (entries.length === 0) { breakdown.style.display = 'none'; return; }
+  breakdown.style.display = 'block';
+
+  entries.forEach(([role, { avg, color }], i) => {
+    const info = srToRankInfo(avg);
+    const pct = (avg / 5000) * 100;
+
+    const bar = document.createElement('div');
+    bar.className = 'role-bar';
+    bar.innerHTML = `
+      <div class="role-bar-header">
+        <div class="role-bar-left">
+          <div class="role-bar-icon" style="color:${color}">${ROLE_SVG[role]}</div>
+          <span class="role-bar-name">${role}</span>
+        </div>
+        <div class="role-bar-right">
+          <span class="role-bar-sr">${Math.round(avg)} SR</span>
+          <span class="role-bar-rank" style="color:${color}">${info.tier} ${info.div}</span>
+        </div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="bar-${role}"
+          style="background:linear-gradient(90deg,${color}88,${color});box-shadow:0 0 12px ${color}66;"></div>
+      </div>`;
+    container.appendChild(bar);
+
+    setTimeout(() => {
+      document.getElementById(`bar-${role}`).style.width = pct + '%';
+    }, 80 + i * 120);
+  });
+}
+
+function calculate() {
+  clearError();
+  hideResults();
+
+  if (currentMode === 'overall') {
+    const { sr, error } = parseRanks(document.getElementById('overallRanks').value);
+    if (error) { showError(error); return; }
+    if (!sr.length) { showError('Please enter at least one rank.'); return; }
+    const avg = sr.reduce((a, b) => a + b, 0) / sr.length;
+    renderResultCard(avg, 'Team Average SR');
+    document.getElementById('breakdown').style.display = 'none';
+  } else {
+    const roleConfig = [
+      { key: 'Tank',    id: 'tankRanks',    color: '#4fc3f7' },
+      { key: 'Damage',  id: 'damageRanks',  color: '#ef5350' },
+      { key: 'Support', id: 'supportRanks', color: '#66bb6a' },
+    ];
+    let totalSR = 0, totalCount = 0;
+    const roleResults = {};
+    for (const { key, id, color } of roleConfig) {
+      const input = document.getElementById(id).value;
+      if (!input.trim()) continue;
+      const { sr, error } = parseRanks(input);
+      if (error) { showError(`${key}: ${error}`); return; }
+      const avg = sr.reduce((a, b) => a + b, 0) / sr.length;
+      roleResults[key] = { avg, color };
+      totalSR += sr.reduce((a, b) => a + b, 0);
+      totalCount += sr.length;
+    }
+    if (totalCount === 0) { showError('Please enter ranks for at least one role.'); return; }
+    const overall = totalSR / totalCount;
+    renderResultCard(overall, 'Overall Team Average');
+    renderRoleBars(roleResults);
+  }
+
+  requestAnimationFrame(() => {
+    const r = document.getElementById('results');
+    r.classList.add('visible');
+  });
+}
+</script>
+</body>
+</html>

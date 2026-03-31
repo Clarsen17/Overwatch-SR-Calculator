@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overwatch Team SR Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0b10;color:#e8e0d4;font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
+
+.hero{background:linear-gradient(180deg,rgba(255,140,0,.18) 0%,transparent 100%);border-bottom:1px solid rgba(255,140,0,.15);padding:36px 20px 28px;text-align:center}
+.hero-badge{display:inline-flex;align-items:center;gap:10px;background:rgba(255,140,0,.1);border:1px solid rgba(255,140,0,.25);border-radius:999px;padding:5px 16px;margin-bottom:18px}
+.hero-dot{width:7px;height:7px;border-radius:50%;background:#ff8c00;box-shadow:0 0 8px #ff8c00;animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px #ff8c00}50%{opacity:.5;box-shadow:0 0 20px #ff8c00}}
+.hero-badge-text{font-size:11px;font-family:'Rajdhani',sans-serif;letter-spacing:2.5px;color:#ff8c00;font-weight:600;text-transform:uppercase}
+.hero h1{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:clamp(26px,5vw,46px);color:#fff;letter-spacing:-.5px;line-height:1.1}
+.hero h1 span{color:#ff8c00}
+.hero-sub{margin-top:8px;color:#555;font-size:13px}
+
+.container{max-width:640px;margin:0 auto;padding:28px 20px 80px}
+
+.mode-toggle{display:flex;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:4px;margin-bottom:22px}
+.mode-btn{flex:1;padding:9px;border:none;cursor:pointer;border-radius:10px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;transition:all .2s;background:transparent;color:#555}
+.mode-btn.active{background:#ff8c00;color:#fff;box-shadow:0 4px 20px rgba(255,140,0,.35)}
+
+/* Live banner */
+.live-banner{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 20px;margin-bottom:20px;transition:border-color .4s,box-shadow .4s}
+.live-banner.lit{border-color:rgba(255,255,255,.13);box-shadow:0 0 0 1px rgba(255,255,255,.03)}
+.live-left{display:flex;flex-direction:column;gap:2px}
+.live-lbl{font-size:10px;font-family:'Rajdhani',sans-serif;letter-spacing:2.5px;text-transform:uppercase;color:#3a3a3a;font-weight:600}
+.live-sr{font-size:30px;font-family:'Rajdhani',sans-serif;font-weight:700;color:#333;transition:color .35s,text-shadow .35s;line-height:1}
+.live-sr.on{color:#ff8c00;text-shadow:0 0 28px rgba(255,140,0,.45)}
+.live-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.live-badge{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:.4px;padding:3px 12px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#333;transition:all .35s}
+.live-badge.on{background:rgba(255,255,255,.06)}
+.live-ct{font-size:11px;color:#333;font-family:'Inter',sans-serif;transition:color .3s}
+.live-ct.on{color:#555}
+
+/* Role section */
+.role-section{margin-bottom:16px}
+.role-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px}
+.role-title{display:flex;align-items:center;gap:9px}
+.role-icon-box{border-radius:9px;padding:6px;display:flex;align-items:center;justify-content:center}
+.role-nm{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;text-transform:uppercase}
+.role-live{font-size:12px;color:#333;font-family:'Inter',sans-serif;transition:color .3s;font-weight:500}
+.role-live.on{color:#888}
+
+/* Picker wrap */
+.picker{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 16px;transition:border-color .2s}
+.picker:hover{border-color:rgba(255,255,255,.12)}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-height:0;margin-bottom:0;transition:margin .2s}
+.chips.has-chips{margin-bottom:12px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 9px 5px 11px;border-radius:999px;font-size:12px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.3px;cursor:default;animation:pop .22s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.5) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.chip-x{background:none;border:none;cursor:pointer;padding:0;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:.55;transition:opacity .15s,background .15s;flex-shrink:0}
+.chip-x:hover{opacity:1;background:rgba(0,0,0,.35)}
+
+/* Add row */
+.add-row{display:flex;gap:8px;align-items:center}
+.rank-sel{flex:1;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.09);border-radius:9px;color:#bbb;padding:8px 28px 8px 12px;font-size:13px;font-family:'Inter',sans-serif;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color .2s}
+.rank-sel:focus{border-color:rgba(255,255,255,.2)}
+.rank-sel option{background:#1c1c1c;color:#ddd}
+.rank-sel optgroup{background:#111;color:#888}
+.add-btn{padding:8px 14px;border-radius:9px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .18s;white-space:nowrap;flex-shrink:0}
+.add-btn:active{transform:scale(.95)}
+
+.hint{font-size:11px;color:#2e2e2e;text-align:center;padding-top:10px;font-family:'Inter',sans-serif;transition:opacity .3s}
+
+.error-msg{margin-top:14px;padding:12px 16px;background:rgba(239,83,80,.1);border:1px solid rgba(239,83,80,.3);border-radius:12px;color:#ef9a9a;font-size:13px;display:none}
+.error-msg.on{display:block;animation:fadeUp .2s ease}
+
+.calc-btn{width:100%;margin-top:18px;padding:14px;background:linear-gradient(135deg,#ff8c00,#ff5e00);border:none;border-radius:13px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#fff;box-shadow:0 6px 28px rgba(255,140,0,.3);transition:transform .1s,box-shadow .2s,opacity .2s}
+.calc-btn:hover:not(:disabled){box-shadow:0 10px 36px rgba(255,140,0,.45)}
+.calc-btn:active:not(:disabled){transform:scale(.98)}
+.calc-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* Results */
+.results{margin-top:26px;display:none}
+.results.on{display:block;animation:fadeUp .4s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+.res-card{border-radius:20px;padding:26px 28px 28px;border:1px solid rgba(255,255,255,.08);text-align:center;position:relative;overflow:hidden}
+.card-grid{position:absolute;inset:0;pointer-events:none;opacity:.035}
+.emblem{margin:0 auto 14px;width:68px;height:68px;position:relative;display:flex;align-items:center;justify-content:center}
+.e-ring{position:absolute;inset:0;border-radius:50%;border:2px solid currentColor;opacity:.25;animation:spin 9s linear infinite}
+.e-ring2{position:absolute;inset:7px;border-radius:50%;border:1px solid currentColor;opacity:.18;animation:spin 6s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.e-icon{position:relative;z-index:1}
+.res-lbl{font-size:10px;font-family:'Rajdhani',sans-serif;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;font-weight:600;position:relative}
+.res-sr{font-size:62px;font-weight:800;font-family:'Rajdhani',sans-serif;line-height:1;margin-bottom:10px;position:relative}
+.res-badge{display:inline-flex;align-items:center;background:rgba(255,255,255,.06);border-radius:999px;padding:4px 14px;font-size:13px;font-weight:600;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;position:relative;border:1px solid rgba(255,255,255,.08)}
+
+.breakdown{margin-top:14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:20px 22px}
+.bd-title{font-size:10px;font-family:'Rajdhani',sans-serif;letter-spacing:2.5px;text-transform:uppercase;color:#3a3a3a;margin-bottom:16px;font-weight:600}
+.rbar{margin-bottom:13px}
+.rbar:last-child{margin-bottom:0}
+.rbar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rbar-left{display:flex;align-items:center;gap:8px}
+.rbar-nm{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#888}
+.rbar-right{display:flex;align-items:center;gap:8px}
+.rbar-val{font-size:12px;color:#555;font-family:'Inter',sans-serif}
+.rbar-rank{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;letter-spacing:.4px}
+.btrack{height:5px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden}
+.bfill{height:100%;border-radius:5px;width:0%;transition:width 1s cubic-bezier(.22,1,.36,1)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-badge">
+    <span class="hero-dot"></span>
+    <span class="hero-badge-text">Overwatch 2 · SR Calculator</span>
+  </div>
+  <h1>Team SR <span>Calculator</span></h1>
+  <p class="hero-sub">by Lars</p>
+</div>
+
+<div class="container">
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnOverall" onclick="setMode('overall')">Overall Average</button>
+    <button class="mode-btn" id="btnPerRole" onclick="setMode('perRole')">Per Role</button>
+  </div>
+
+  <!-- Live banner -->
+  <div class="live-banner" id="banner">
+    <div class="live-left">
+      <span class="live-lbl" id="bannerLbl">Team Average</span>
+      <span class="live-sr" id="bannerSR">— SR</span>
+    </div>
+    <div class="live-right">
+      <span class="live-badge" id="bannerBadge">No players yet</span>
+      <span class="live-ct" id="bannerCt"></span>
+    </div>
+  </div>
+
+  <!-- Overall -->
+  <div id="secOverall">
+    <div class="role-section">
+      <div class="picker" id="wrap-overall">
+        <div class="chips" id="chips-overall"></div>
+        <div class="add-row">
+          <select class="rank-sel" id="sel-overall"></select>
+          <button class="add-btn" id="abtn-overall"
+            style="background:rgba(255,140,0,.12);border:1px solid rgba(255,140,0,.3);color:#ff8c00"
+            onmouseover="this.style.background='rgba(255,140,0,.22)'"
+            onmouseout="this.style.background='rgba(255,140,0,.12)'"
+            onclick="addChip('overall')">+ Add Player</button>
+        </div>
+        <div class="hint" id="hint-overall">Select a rank and click Add Player</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per role -->
+  <div id="secPerRole" style="display:none">
+    <!-- Tank -->
+    <div class="role-section">
+      <div class="role-header">
+        <div class="role-title">
+          <div class="role-icon-box" style="color:#4fc3f7;background:rgba(79,195,247,.12)">
+            <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><path d="M14 3L24 8L24 16C24 21 19 25 14 27C9 25 4 21 4 16L4 8Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/><path d="M10 14L13 17L18 11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="role-nm" style="color:#4fc3f7">Tank</span>
+        </div>
+        <span class="role-live" id="rl-tank">—</span>
+      </div>
+      <div class="picker">
+        <div class="chips" id="chips-tank"></div>
+        <div class="add-row">
+          <select class="rank-sel" id="sel-tank"></select>
+          <button class="add-btn" style="background:rgba(79,195,247,.1);border:1px solid rgba(79,195,247,.3);color:#4fc3f7" onmouseover="this.style.background='rgba(79,195,247,.2)'" onmouseout="this.style.background='rgba(79,195,247,.1)'" onclick="addChip('tank')">+ Add</button>
+        </div>
+      </div>
+    </div>
+    <!-- Damage -->
+    <div class="role-section">
+      <div class="role-header">
+        <div class="role-title">
+          <div class="role-icon-box" style="color:#ef5350;background:rgba(239,83,80,.12)">
+            <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><path d="M6 22L18 6L22 10L10 22Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/><circle cx="20" cy="8" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M4 24L8 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <span class="role-nm" style="color:#ef5350">Damage</span>
+        </div>
+        <span class="role-live" id="rl-damage">—</span>
+      </div>
+      <div class="picker">
+        <div class="chips" id="chips-damage"></div>
+        <div class="add-row">
+          <select class="rank-sel" id="sel-damage"></select>
+          <button class="add-btn" style="background:rgba(239,83,80,.1);border:1px solid rgba(239,83,80,.3);color:#ef5350" onmouseover="this.style.background='rgba(239,83,80,.2)'" onmouseout="this.style.background='rgba(239,83,80,.1)'" onclick="addChip('damage')">+ Add</button>
+        </div>
+      </div>
+    </div>
+    <!-- Support -->
+    <div class="role-section">
+      <div class="role-header">
+        <div class="role-title">
+          <div class="role-icon-box" style="color:#66bb6a;background:rgba(102,187,106,.12)">
+            <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><path d="M14 5C14 5 7 9 7 16C7 20.4 10.1 24 14 24C17.9 24 21 20.4 21 16C21 9 14 5 14 5Z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M11 14.5L17 14.5M14 11.5L14 17.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </div>
+          <span class="role-nm" style="color:#66bb6a">Support</span>
+        </div>
+        <span class="role-live" id="rl-support">—</span>
+      </div>
+      <div class="picker">
+        <div class="chips" id="chips-support"></div>
+        <div class="add-row">
+          <select class="rank-sel" id="sel-support"></select>
+          <button class="add-btn" style="background:rgba(102,187,106,.1);border:1px solid rgba(102,187,106,.3);color:#66bb6a" onmouseover="this.style.background='rgba(102,187,106,.2)'" onmouseout="this.style.background='rgba(102,187,106,.1)'" onclick="addChip('support')">+ Add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-msg" id="errMsg"></div>
+  <button class="calc-btn" id="calcBtn" onclick="calculate()" disabled>Add players to calculate</button>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="res-card" id="resCard">
+      <svg class="card-grid" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="gp" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="white" stroke-width=".5"/></pattern></defs><rect width="100%" height="100%" fill="url(#gp)"/></svg>
+      <div class="emblem" id="emblem">
+        <div class="e-ring" id="er1"></div>
+        <div class="e-ring2" id="er2"></div>
+        <div class="e-icon" id="eicon"></div>
+      </div>
+      <div class="res-lbl" id="resLbl">Team Average SR</div>
+      <div class="res-sr" id="resSR">0</div>
+      <div class="res-badge" id="resBadge">—</div>
+    </div>
+    <div class="breakdown" id="bdSection" style="display:none">
+      <div class="bd-title">Role Breakdown</div>
+      <div id="bdBars"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SR_MAP = {
+  "Bronze 5":550,"Bronze 4":1150,"Bronze 3":1250,"Bronze 2":1350,"Bronze 1":1450,
+  "Silver 5":1550,"Silver 4":1650,"Silver 3":1750,"Silver 2":1850,"Silver 1":1950,
+  "Gold 5":2050,"Gold 4":2150,"Gold 3":2250,"Gold 2":2350,"Gold 1":2450,
+  "Platinum 5":2550,"Platinum 4":2650,"Platinum 3":2750,"Platinum 2":2850,"Platinum 1":2950,
+  "Diamond 5":3050,"Diamond 4":3150,"Diamond 3":3250,"Diamond 2":3350,"Diamond 1":3450,
+  "Master 5":3550,"Master 4":3650,"Master 3":3750,"Master 2":3850,"Master 1":3950,
+  "Grandmaster 5":4050,"Grandmaster 4":4150,"Grandmaster 3":4250,"Grandmaster 2":4350,"Grandmaster 1":4450,
+  "Champion 5":4550,"Champion 4":4650,"Champion 3":4750,"Champion 2":4850,"Champion 1":4950
+};
+
+const TIERS = ['Bronze','Silver','Gold','Platinum','Diamond','Master','Grandmaster','Champion'];
+const TIER_CAPS = [1500,2000,2500,3000,3500,4000,4500,5000];
+
+const TIER_INFO = {
+  Bronze:      {color:"#CD7F32",bg:"linear-gradient(135deg,#3d2008,#1a0e04)"},
+  Silver:      {color:"#C0C0C0",bg:"linear-gradient(135deg,#2a2a2a,#111)"},
+  Gold:        {color:"#FFD700",bg:"linear-gradient(135deg,#3d2e00,#1a1200)"},
+  Platinum:    {color:"#00CED1",bg:"linear-gradient(135deg,#003d3d,#001a1a)"},
+  Diamond:     {color:"#00BFFF",bg:"linear-gradient(135deg,#00203d,#000e1a)"},
+  Master:      {color:"#9B59B6",bg:"linear-gradient(135deg,#1f0033,#0d0016)"},
+  Grandmaster: {color:"#F39C12",bg:"linear-gradient(135deg,#3d1f00,#1a0d00)"},
+  Champion:    {color:"#FF4500",bg:"linear-gradient(135deg,#3d0000,#1a0000)"},
+};
+
+const CHIP_CC = {
+  Bronze:      {bg:"rgba(205,127,50,.17)",bd:"rgba(205,127,50,.38)",tx:"#dba060"},
+  Silver:      {bg:"rgba(192,192,192,.13)",bd:"rgba(192,192,192,.32)",tx:"#cacaca"},
+  Gold:        {bg:"rgba(255,215,0,.13)",bd:"rgba(255,215,0,.32)",tx:"#ffd700"},
+  Platinum:    {bg:"rgba(0,206,209,.11)",bd:"rgba(0,206,209,.28)",tx:"#00ced1"},
+  Diamond:     {bg:"rgba(0,191,255,.11)",bd:"rgba(0,191,255,.28)",tx:"#40c8ff"},
+  Master:      {bg:"rgba(155,89,182,.14)",bd:"rgba(155,89,182,.35)",tx:"#bb77ee"},
+  Grandmaster: {bg:"rgba(243,156,18,.14)",bd:"rgba(243,156,18,.35)",tx:"#f3a030"},
+  Champion:    {bg:"rgba(255,69,0,.14)",bd:"rgba(255,69,0,.32)",tx:"#ff6030"},
+};
+
+const EMBLEMS = {
+  Bronze:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><polygon points="20,4 36,14 36,26 20,36 4,26 4,14" stroke="currentColor" stroke-width="2" fill="none" opacity=".6"/><circle cx="20" cy="20" r="6" stroke="currentColor" stroke-width="2" fill="none"/></svg>`,
+  Silver:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><rect x="7" y="7" width="26" height="26" rx="4" stroke="currentColor" stroke-width="2" fill="none" opacity=".6"/><rect x="13" y="13" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>`,
+  Gold:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><polygon points="20,3 25,14 37,15 28,24 31,36 20,30 9,36 12,24 3,15 15,14" stroke="currentColor" stroke-width="2" fill="none" opacity=".75"/></svg>`,
+  Platinum:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><polygon points="20,4 35,12 35,28 20,36 5,28 5,12" stroke="currentColor" stroke-width="2" fill="none" opacity=".6"/><polygon points="20,10 30,16 30,24 20,30 10,24 10,16" stroke="currentColor" stroke-width="1.5" fill="none" opacity=".4"/></svg>`,
+  Diamond:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><polygon points="20,3 37,16 30,37 10,37 3,16" stroke="currentColor" stroke-width="2" fill="none" opacity=".7"/><line x1="3" y1="16" x2="37" y2="16" stroke="currentColor" stroke-width="1" opacity=".25"/><line x1="10" y1="37" x2="20" y2="3" stroke="currentColor" stroke-width="1" opacity=".25"/><line x1="30" y1="37" x2="20" y2="3" stroke="currentColor" stroke-width="1" opacity=".25"/></svg>`,
+  Master:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="2" fill="none" opacity=".55"/><circle cx="20" cy="20" r="8" stroke="currentColor" stroke-width="1.5" fill="none" opacity=".45"/><circle cx="20" cy="20" r="3" fill="currentColor" opacity=".8"/></svg>`,
+  Grandmaster:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><polygon points="20,2 24,14 37,14 27,22 31,35 20,27 9,35 13,22 3,14 16,14" stroke="currentColor" stroke-width="2" fill="none" opacity=".8"/><circle cx="20" cy="20" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>`,
+  Champion:`<svg width="38" height="38" viewBox="0 0 40 40" fill="none"><path d="M8 10L8 28Q8 34 20 37Q32 34 32 28L32 10Z" stroke="currentColor" stroke-width="2" fill="none" opacity=".7"/><path d="M8 10L4 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M32 10L36 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 6L4 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M36 6L36 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 22L18 26L26 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+
+const ROLE_SVG = {
+  tank:`<svg width="13" height="13" viewBox="0 0 28 28" fill="none"><path d="M14 3L24 8L24 16C24 21 19 25 14 27C9 25 4 21 4 16L4 8Z" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M10 14L13 17L18 11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  damage:`<svg width="13" height="13" viewBox="0 0 28 28" fill="none"><path d="M6 22L18 6L22 10L10 22Z" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/><circle cx="20" cy="8" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M4 24L8 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  support:`<svg width="13" height="13" viewBox="0 0 28 28" fill="none"><path d="M14 5C14 5 7 9 7 16C7 20.4 10.1 24 14 24C17.9 24 21 20.4 21 16C21 9 14 5 14 5Z" stroke="currentColor" stroke-width="2.5" fill="none"/><path d="M11 14.5L17 14.5M14 11.5L14 17.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`,
+};
+
+// State
+let mode = 'overall';
+const players = {overall:[],tank:[],damage:[],support:[]};
+
+// Build selects
+function buildSelect(id) {
+  const sel = document.getElementById(id);
+  TIERS.forEach(tier => {
+    const og = document.createElement('optgroup');
+    og.label = tier;
+    [5,4,3,2,1].forEach(d => {
+      const o = document.createElement('option');
+      o.value = `${tier} ${d}`;
+      o.textContent = `${tier} ${d}`;
+      if(tier==='Gold'&&d===5) o.selected=true;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+}
+['overall','tank','damage','support'].forEach(r => buildSelect('sel-'+r));
+
+function srToInfo(sr) {
+  let tier = TIERS[0];
+  for(let i=0;i<TIERS.length;i++){if(sr<=TIER_CAPS[i]){tier=TIERS[i];break;}}
+  const cap = TIER_CAPS[TIERS.indexOf(tier)];
+  const div = Math.min(5,Math.max(1,Math.ceil((cap-sr)/100)+1));
+  return {tier,div,...TIER_INFO[tier]};
+}
+
+function avg(arr){return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;}
+
+function allSR() {
+  if(mode==='overall') return players.overall.map(r=>SR_MAP[r]);
+  return [...players.tank,...players.damage,...players.support].map(r=>SR_MAP[r]);
+}
+
+// Animated counter
+let liveRaf, livePrev=0;
+function countTo(el, to, dur, suffix='') {
+  cancelAnimationFrame(liveRaf);
+  const from = livePrev;
+  const t0 = performance.now();
+  function step(now) {
+    const p = Math.min((now-t0)/dur,1);
+    const e = 1-Math.pow(1-p,4);
+    el.textContent = Math.round(from+(to-from)*e) + suffix;
+    if(p<1) liveRaf=requestAnimationFrame(step);
+  }
+  liveRaf=requestAnimationFrame(step);
+  livePrev=to;
+}
+
+function updateLive() {
+  const srs = allSR();
+  const banner = document.getElementById('banner');
+  const srEl = document.getElementById('bannerSR');
+  const badge = document.getElementById('bannerBadge');
+  const ct = document.getElementById('bannerCt');
+  const btn = document.getElementById('calcBtn');
+
+  if(!srs.length) {
+    livePrev=0;
+    srEl.textContent='— SR';
+    srEl.classList.remove('on'); srEl.style.color='';
+    badge.textContent='No players yet'; badge.classList.remove('on');
+    badge.style.color=''; badge.style.borderColor='';
+    ct.textContent=''; ct.classList.remove('on');
+    banner.classList.remove('lit');
+    btn.disabled=true; btn.textContent='Add players to calculate';
+    // reset role labels
+    ['tank','damage','support'].forEach(r=>{
+      const el=document.getElementById('rl-'+r);
+      if(el){el.textContent='—';el.classList.remove('on');el.style.color='';}
+    });
+    return;
+  }
+
+  const a = avg(srs);
+  const info = srToInfo(a);
+  banner.classList.add('lit');
+  srEl.classList.add('on');
+  srEl.style.color = info.color;
+  countTo(srEl, Math.round(a), 450, ' SR');
+  badge.classList.add('on');
+  badge.textContent = `${info.tier} ${info.div}`;
+  badge.style.color = info.color;
+  badge.style.borderColor = info.color+'40';
+  ct.textContent = `${srs.length} player${srs.length!==1?'s':''}`;
+  ct.classList.add('on');
+  btn.disabled=false; btn.textContent='Calculate SR';
+
+  // per-role live
+  ['tank','damage','support'].forEach(r=>{
+    const el=document.getElementById('rl-'+r);
+    if(!el) return;
+    const rs=players[r].map(x=>SR_MAP[x]);
+    if(!rs.length){el.textContent='—';el.classList.remove('on');el.style.color='';return;}
+    const ra=avg(rs), ri=srToInfo(ra);
+    el.textContent=`${ri.tier} ${ri.div} · ${Math.round(ra)} SR`;
+    el.style.color=ri.color; el.classList.add('on');
+  });
+}
+
+function renderChips(role) {
+  const c = document.getElementById('chips-'+role);
+  c.innerHTML='';
+  players[role].forEach((rank,i)=>{
+    const tier=rank.split(' ')[0];
+    const cc=CHIP_CC[tier];
+    const chip=document.createElement('div');
+    chip.className='chip';
+    chip.style.cssText=`background:${cc.bg};border:1px solid ${cc.bd};color:${cc.tx}`;
+    const ico = (role!=='overall'&&ROLE_SVG[role]) ? `<span style="opacity:.65;display:inline-flex;align-items:center">${ROLE_SVG[role]}</span>` : '';
+    chip.innerHTML=`${ico}<span>${rank}</span><button class="chip-x" onclick="removeChip('${role}',${i})"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`;
+    c.appendChild(chip);
+  });
+  c.classList.toggle('has-chips', players[role].length>0);
+  const hint=document.getElementById('hint-overall');
+  if(hint) hint.style.display=players['overall'].length?'none':'block';
+}
+
+function addChip(role) {
+  const val = document.getElementById('sel-'+role).value;
+  players[role].push(val);
+  renderChips(role);
+  updateLive();
+}
+
+function removeChip(role,i) {
+  players[role].splice(i,1);
+  renderChips(role);
+  updateLive();
+}
+
+function setMode(m) {
+  mode=m;
+  document.getElementById('btnOverall').classList.toggle('active',m==='overall');
+  document.getElementById('btnPerRole').classList.toggle('active',m==='perRole');
+  document.getElementById('secOverall').style.display=m==='overall'?'block':'none';
+  document.getElementById('secPerRole').style.display=m==='perRole'?'block':'none';
+  document.getElementById('bannerLbl').textContent=m==='overall'?'Team Average':'Overall Average';
+  livePrev=0;
+  updateLive();
+  document.getElementById('results').classList.remove('on');
+}
+
+let resRaf;
+function calculate() {
+  const srs = allSR();
+  if(!srs.length) return;
+  const a = avg(srs);
+  const info = srToInfo(a);
+
+  const card=document.getElementById('resCard');
+  card.style.background=info.bg;
+  card.style.borderColor=info.color+'3a';
+  card.style.boxShadow=`0 0 60px ${info.color}14,inset 0 1px 0 rgba(255,255,255,.06)`;
+
+  const emb=document.getElementById('emblem');
+  emb.style.color=info.color;
+  document.getElementById('eicon').innerHTML=EMBLEMS[info.tier];
+
+  document.getElementById('resLbl').style.color=info.color+'88';
+  document.getElementById('resLbl').textContent=mode==='perRole'?'Overall Team Average':'Team Average SR';
+
+  const srEl=document.getElementById('resSR');
+  srEl.style.color=info.color;
+  srEl.style.textShadow=`0 0 50px ${info.color}55`;
+
+  cancelAnimationFrame(resRaf);
+  const t0=performance.now();
+  function step(now){
+    const p=Math.min((now-t0)/900,1);
+    const e=1-Math.pow(1-p,4);
+    srEl.textContent=Math.round(e*Math.round(a));
+    if(p<1)resRaf=requestAnimationFrame(step);
+  }
+  resRaf=requestAnimationFrame(step);
+
+  const rb=document.getElementById('resBadge');
+  rb.style.borderColor=info.color+'3a';
+  rb.style.color=info.color;
+  rb.textContent=`${info.tier} ${info.div}`;
+
+  // breakdown
+  const bd=document.getElementById('bdSection');
+  const bars=document.getElementById('bdBars');
+  bars.innerHTML='';
+  if(mode==='perRole'){
+    const rc=[{r:'Tank',k:'tank',c:'#4fc3f7'},{r:'Damage',k:'damage',c:'#ef5350'},{r:'Support',k:'support',c:'#66bb6a'}];
+    let any=false;
+    rc.forEach(({r,k,c},ri)=>{
+      const rs=players[k].map(x=>SR_MAP[x]);
+      if(!rs.length)return;
+      any=true;
+      const ra=avg(rs),ri2=srToInfo(ra),pct=(ra/5000)*100;
+      const bar=document.createElement('div');
+      bar.className='rbar';
+      bar.innerHTML=`<div class="rbar-top"><div class="rbar-left"><span style="color:${c};display:inline-flex;align-items:center">${ROLE_SVG[k]}</span><span class="rbar-nm">${r}</span></div><div class="rbar-right"><span class="rbar-val">${Math.round(ra)} SR</span><span class="rbar-rank" style="color:${c}">${ri2.tier} ${ri2.div}</span></div></div><div class="btrack"><div class="bfill" id="bf-${k}" style="background:linear-gradient(90deg,${c}66,${c});box-shadow:0 0 8px ${c}44"></div></div>`;
+      bars.appendChild(bar);
+      setTimeout(()=>{const f=document.getElementById('bf-'+k);if(f)f.style.width=pct+'%';},90+ri*120);
+    });
+    bd.style.display=any?'block':'none';
+  } else {
+    bd.style.display='none';
+  }
+
+  requestAnimationFrame(()=>document.getElementById('results').classList.add('on'));
+}
+</script>
+</body>
+</html>
